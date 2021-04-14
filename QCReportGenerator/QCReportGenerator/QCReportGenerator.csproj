@@ -19,4 +19,8 @@
     <PackageReference Include="DocumentFormat.OpenXml" Version="2.12.3" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\TeachingScripts\RpdPatcher\RpdPatcher.fsproj" />
+  </ItemGroup>
+
 </Project>
