@@ -48,6 +48,10 @@ namespace QCReportGenerator
 
             var body = QCReport.MainDocumentPart.Document.Body;
             var table = body.Descendants<Table>().First();
+            var analyzedProgramsCount = 0;
+            var incorrectFormProgramsCount = 0;
+            var incorrectValueFundProgramsCount = 0;
+            var problems = new Dictionary<string, int>();
 
             foreach (var discipline in disciplines)
             {
@@ -62,15 +66,43 @@ namespace QCReportGenerator
                     var (content, errors) = ProgramContentChecker.parseProgramFile(programFileName);
 
                     // sections check
-                    // get missing sections
+                    // get and count missing sections
                     var missingSections = new StringBuilder();
-                    errors.ToList()
-                        .ForEach(e => missingSections.Append(GetMissingSectionNumber(e)));
+                    foreach (var error in errors)
+                    {
+                        var sectionNumber = GetMissingSectionNumber(error);
+                        if (string.IsNullOrEmpty(sectionNumber))
+                        {
+                            continue;
+                        }
+                        missingSections.Append($"{sectionNumber}, ");
+                        if (!problems.ContainsKey(sectionNumber))
+                        {
+                            problems.Add(sectionNumber, 1);
+                            continue;
+                        }
+                        ++problems[sectionNumber];
+                    }
 
-                    // get empty sections
+                    // get and count empty sections
                     var emptySections = new StringBuilder();
-                    content.Where(s => s.Value == "").ToList()
-                        .ForEach(s => emptySections.Append(GetEmptySectionNumber(s.Key)));
+                    foreach (var section in content.Where(s => s.Value == "").ToList())
+                    {
+                        var sectionNumber = GetEmptySectionNumber(section.Key);
+                        if (string.IsNullOrEmpty(sectionNumber))
+                        {
+                            continue;
+                        }
+                        emptySections.Append($"{sectionNumber}, ");
+                        if (!problems.ContainsKey(sectionNumber))
+                        {
+                            problems.Add(sectionNumber, 1);
+                            continue;
+                        }
+                        ++problems[sectionNumber];
+                    }
+
+                    var incorrectFormSections = missingSections.Append(emptySections);
 
                     // value fund check
                     var valueFundCheckResult = new StringBuilder();
@@ -79,17 +111,53 @@ namespace QCReportGenerator
 
                     var row = new TableRow(
                         CreateTableCell($"[{discipline.Code}] {discipline.RussianName}"),
-                        CreateTableCell($"{missingSections.Append(emptySections)}"),
+                        CreateTableCell($"{incorrectFormSections}"),
                         CreateTableCell($"{valueFundCheckResult}"),
                         CreateTableCell(""),
                         CreateTableCell(""));
 
                     table.Append(row);
+
+                    // analytics
+                    ++analyzedProgramsCount;
+                    if (!string.IsNullOrEmpty(incorrectFormSections.ToString()))
+                    {
+                        ++incorrectFormProgramsCount;
+                    }
+                    if (!string.IsNullOrEmpty(valueFundCheckResult.ToString()))
+                    {
+                        ++incorrectValueFundProgramsCount;
+                    }
                 }
                 catch (Exception)
                 {
                     continue;
                 }
+            }
+
+            PrintAnalytics(body, disciplines.Count, analyzedProgramsCount, incorrectFormProgramsCount, incorrectValueFundProgramsCount, problems);
+        }
+
+        private static void PrintAnalytics(Body body, int allProgramsCount, int analyzedProgramsCount, int incorrectFormProgramsCount, int incorrectValueFundProgramsCount, Dictionary<string, int> problems)
+        {
+            var table = body.Descendants<Table>().First();
+            var paragraphs = table.ElementsAfter().Where(e => e is Paragraph).Skip(2).ToList();
+            var info = new List<string>
+            {
+                $"--- {analyzedProgramsCount}/{allProgramsCount}",
+                $"--- {incorrectFormProgramsCount}",
+                $"--- {incorrectValueFundProgramsCount}"
+            };
+
+            for (var i = 0; i < 3; ++i)
+            {
+                paragraphs[i].AppendChild(new Run(new Text(info[i])));
+            }
+
+            foreach (var problem in problems.OrderByDescending(p => p.Value).ToList())
+            {
+                paragraphs[3].AppendChild(new Run(new Break()));
+                paragraphs[3].AppendChild(new Run(new Text($"{problem.Key}  {problem.Value}")));
             }
         }
 
@@ -111,14 +179,19 @@ namespace QCReportGenerator
         private static string GetMissingSectionNumber(string errorMessage)
         {
             var match = Regex.Match(errorMessage, @"'([0-9\.]+)',?.*");
-            return match.Success ? $"{match.Groups[1].Value}, " : "";
+            return match.Success ? FormatSectionNumber(match.Groups[1].Value) : "";
         }
 
         private static string GetEmptySectionNumber(string s)
         {
             var match = Regex.Match(s, @"^([0-9\.]+).*");
-            return match.Success ? $"{match.Groups[1].Value}, " : "";
+            return match.Success ? FormatSectionNumber(match.Groups[1].Value) : "";
         }
+
+        private static string FormatSectionNumber(string number) 
+            => number.EndsWith('.')
+                ? number.Substring(0, number.Length - 1)
+                : number;
 
         private static TableCell CreateTableCell(string text)
             => new(new Paragraph(new Run(new Text(text))));
