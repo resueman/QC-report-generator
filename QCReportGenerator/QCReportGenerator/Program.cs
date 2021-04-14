@@ -25,6 +25,16 @@ namespace QCReportGenerator
 
             var curriculumPath = args[0];
             var folderPath = args[1];
+            if (!Directory.Exists(folderPath))
+            {
+                Console.WriteLine($"Папка с РПД '{folderPath}' не найдена");
+                return;
+            }
+            if (!File.Exists(curriculumPath))
+            {
+                Console.WriteLine($"Файл с учебным планом '{curriculumPath}' не найден");
+                return;
+            }
 
             var files = Directory.EnumerateFiles(folderPath).ToList();
             var disciplines = new DocxCurriculum(curriculumPath).Disciplines;
