@@ -20,7 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\TeachingScripts\RpdPatcher\RpdPatcher.fsproj" />
+    <ProjectReference Include="..\..\TeachingScripts\RpdPatcher\RpdPatcher.fsproj" />
   </ItemGroup>
 
 </Project>
