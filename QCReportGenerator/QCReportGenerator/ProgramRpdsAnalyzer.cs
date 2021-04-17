@@ -206,7 +206,7 @@ namespace QCReportGenerator
                 ++IncorrectFormProgramsCount;
             }
 
-            return incorrectFormSections.ToString();
+            return FormatSequenceOfSections(incorrectFormSections.ToString());
         }
 
         private static string GetMissingSectionNumber(string errorMessage)
@@ -251,7 +251,10 @@ namespace QCReportGenerator
                 ++IncorrectValueFundProgramsCount;
             }
 
-            return valueFundCheckResult.ToString();
+            return FormatSequenceOfSections(valueFundCheckResult.ToString());
         }
+
+        private static string FormatSequenceOfSections(string sequence) 
+            => sequence.EndsWith(", ") ? sequence[0..^2] : sequence;
     }
 }

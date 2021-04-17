@@ -60,7 +60,7 @@ namespace QCReportGenerator
         private void InsertRpdInfo(ProgramRpdsAnalyzer result)
         {
             var table = body.Descendants<Table>().First();
-            var curriculumName = new FileInfo(result.CurriculumPath).Name;
+            var curriculumName = Path.GetFileNameWithoutExtension(result.CurriculumPath);
 
             var tc = CreateTableCellCourseHeader($"{result.Course} курс. Учебный план {curriculumName}");
             table.Append(new TableRow(tc));
