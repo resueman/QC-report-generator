@@ -15,7 +15,7 @@ namespace QCReportGenerator
     {
         static void Main(string[] args)
         {
-            if (args.Length != 2)
+            if (args.Length < 2)
             {
                 Console.WriteLine("Добро пожаловать в QC Report Generator, утилиту для генерации отчета комиссии контроля качества");
                 Console.WriteLine("Использование:");
@@ -23,10 +23,16 @@ namespace QCReportGenerator
                 return;
             }
 
-            var curriculumPath = args[0];
-            var rpdFolderPath = args[1];
-            var programRpdsAnalyzer = new ProgramRpdsAnalyzer(curriculumPath, rpdFolderPath);
-            var generator = new QcReportGenerator(programRpdsAnalyzer);
+            var results = new List<ProgramRpdsAnalyzer>();
+            for (var i = 0; i < args.Length; i += 2)
+            {
+                var curriculumPath = args[i];
+                var rpdFolderPath = args[i + 1];
+                var rpdsAnalysisResult = new ProgramRpdsAnalyzer(curriculumPath, rpdFolderPath);
+                results.Add(rpdsAnalysisResult);
+            }
+
+            var generator = new QcReportGenerator(results);
             generator.GenerateReport();
         }
     }

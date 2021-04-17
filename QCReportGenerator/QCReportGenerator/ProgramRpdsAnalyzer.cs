@@ -5,12 +5,15 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace QCReportGenerator
 {
     class ProgramRpdsAnalyzer
     {
+        public DocxCurriculum Curriculum { get; private set; }
+
+        public int Course { get; private set; }
+
         public string CurriculumPath { get; private set; }
 
         public string RpdFolderPath { get; private set; }
@@ -32,14 +35,14 @@ namespace QCReportGenerator
         private static readonly Dictionary<string, string> valuationFund = new()
         {
             {
-                "3.1.3. Методика проведения текущего контроля " +
-            "успеваемости и промежуточной аттестации и критерии оценивания",
-                "3.2.4, "
+                "3.1.4. Методические материалы для проведения текущего контроля успеваемости и промежуточной" +
+                    " аттестации (контрольно-измерительные материалы, оценочные средства)",
+                "3.2.3, "
             },
             {
-                "3.1.4. Методические материалы для проведения текущего контроля успеваемости и промежуточной" +
-            " аттестации (контрольно-измерительные материалы, оценочные средства)",
-                "3.2.1, 3.2.2, 3.2.3, "
+                "3.1.3. Методика проведения текущего контроля " +
+                    "успеваемости и промежуточной аттестации и критерии оценивания",
+                "3.2.4, "
             }
         };
 
@@ -62,8 +65,15 @@ namespace QCReportGenerator
             IgnoredRpd = new Dictionary<IgnoreReasonType, List<string>>
             {
                 { IgnoreReasonType.NotFound, new List<string>() },
-                { IgnoreReasonType.ParsingProblems, new List<string>() }
+                { IgnoreReasonType.ParsingProblems, new List<string>() },
+                { IgnoreReasonType.TwoRpdsInFolder, new List<string>() }
             };
+
+            Curriculum = new DocxCurriculum(CurriculumPath);
+            var curriculumYear = Curriculum.CurriculumCode.Substring(0, 2);
+            Course = 6 < DateTime.Now.Month && DateTime.Now.Month <= 12
+                ? 1 + DateTime.Now.Year - 2000 - int.Parse(curriculumYear)
+                : DateTime.Now.Year - 2000 - int.Parse(curriculumYear);
 
             Analyze();
         }
@@ -71,42 +81,62 @@ namespace QCReportGenerator
         private void Analyze()
         {
             var files = Directory.EnumerateFiles(RpdFolderPath).ToList();
-            var disciplines = new DocxCurriculum(CurriculumPath).Disciplines;
+            var disciplines = Curriculum.Disciplines
+                .Where(d => d.Implementations.Select(i => i.Semester).Contains(Course * 2 - 1)
+                    || d.Implementations.Select(i => i.Semester).Contains(Course * 2))
+                .ToList();
+
             ExpectedProgramsCount = disciplines.Count;
             foreach (var discipline in disciplines)
             {
-                var programFileName = files.SingleOrDefault(f => f.Contains(discipline.Code));
-                if (programFileName == null)
+                var programFileName = "";
+                try
                 {
-                    IgnoredRpd[IgnoreReasonType.NotFound].Add($"{discipline.Code} {discipline.RussianName}");
+                    programFileName = files.SingleOrDefault(f => f.Contains(discipline.Code));
+                    if (programFileName == null)
+                    {
+                        IgnoredRpd[IgnoreReasonType.NotFound].Add($"{discipline.Code} {discipline.RussianName}");
+                        continue;
+                    }
+                }
+                catch (InvalidOperationException)
+                {
+                    var names = "";
+                    files.Where(f => f.Contains(discipline.Code)).ToList().ForEach(f => names += $"{f} ");
+                    IgnoredRpd[IgnoreReasonType.TwoRpdsInFolder].Add($"{names}");
                     continue;
                 }
 
-                List<string> errors;
-                Dictionary<string, string> content;
                 try
                 {
                     var (c, e) = ProgramContentChecker.parseProgramFile(programFileName);
                     ++ActualProgramsCount;
-                    errors = e.ToList();
-                    content = c.ToDictionary(c => c.Key, c => c.Value);
+                    var content = c.ToDictionary(c => c.Key, c => c.Value);
+                    var formMismatchSections = GetEstablishedFormMismatchErrors(content, e.ToList());
+                    var valueFundCheckResult = GetValueFundCheckErrors(c);
+                    Results.Add((discipline, formMismatchSections, valueFundCheckResult));
                 }
                 catch (Exception)
                 {
                     IgnoredRpd[IgnoreReasonType.ParsingProblems].Add(programFileName);
                     continue;
                 }
-
-                var formMismatchSections = GetEstablishedFormMismatchErrors(content, errors);
-                var valueFundCheckResult = GetValueFundCheckErrors(content);
-                Results.Add((discipline, formMismatchSections, valueFundCheckResult));
             }
         }
 
-        private string GetValueFundCheckErrors(Dictionary<string, string> content)
+        private string GetValueFundCheckErrors(Microsoft.FSharp.Collections.FSharpMap<string, string> c)
         {
             var valueFundCheckResult = new StringBuilder();
-            valuationFund.Where(s => content.TryGetValue(s.Key, out var text) && text.Trim() != "").ToList()
+            var competencesError = ProgramContentChecker.shallContainCompetences(c).ToList();
+            if (competencesError.Count != 0)
+            {
+                valueFundCheckResult.Append("3.2.1, 3.2.2, ");
+            }
+
+            var content = c.ToDictionary(c => c.Key, c => c.Value);
+            valuationFund
+                .Where(s => !content.TryGetValue(s.Key, out var text) || text.Trim() == "")
+                .ToList()
                 .ForEach(s => valueFundCheckResult.Append(s.Value));
 
             if (!string.IsNullOrEmpty(valueFundCheckResult.ToString()))
@@ -179,7 +209,7 @@ namespace QCReportGenerator
 
         private static string FormatSectionNumber(string number)
             => number.EndsWith('.')
-                ? number.Substring(0, number.Length - 1)
+                ? number[0..^1]
                 : number;
     }
 }

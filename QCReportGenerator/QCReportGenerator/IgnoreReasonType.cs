@@ -3,6 +3,7 @@
     public enum IgnoreReasonType
     {
         ParsingProblems,
-        NotFound
+        NotFound,
+        TwoRpdsInFolder
     }
 }
