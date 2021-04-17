@@ -1,13 +1,5 @@
-﻿using DocumentFormat.OpenXml;
-using DocumentFormat.OpenXml.Packaging;
-using DocumentFormat.OpenXml.Wordprocessing;
-using System.Linq;
-using CurriculumParser;
-using System.IO;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Text;
-using System.Text.RegularExpressions;
 
 namespace QCReportGenerator
 {

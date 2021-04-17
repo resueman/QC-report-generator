@@ -1,5 +1,4 @@
-﻿using CurriculumParser;
-using DocumentFormat.OpenXml;
+﻿using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using System.Collections.Generic;
@@ -8,6 +7,9 @@ using System.Linq;
 
 namespace QCReportGenerator
 {
+    /// <summary>
+    /// Генератор отчета комиссии контроля качества
+    /// </summary>
     class QcReportGenerator
     {        
         private Body body;
@@ -17,12 +19,15 @@ namespace QCReportGenerator
 
         public QcReportGenerator(List<ProgramRpdsAnalyzer> results)
         {
-            this.analysisResults = results;
+            analysisResults = results;
             patternPath = "./pattern.docx";
             QCReportPath = $"./Отчет РПД {results.First().Curriculum.Programme.Code}.docx";
             CreateQCReportDocument();
         }
 
+        /// <summary>
+        /// Создать отчет комиссии контроля качества
+        /// </summary>
         public void GenerateReport()
         {
             using var QCReport = WordprocessingDocument.Open(QCReportPath, true);
@@ -34,6 +39,9 @@ namespace QCReportGenerator
             InsertAnalytics();
         }
 
+        /// <summary>
+        /// Создать документ отчета по шаблону
+        /// </summary>
         private void CreateQCReportDocument()
         {
             using var pattern = WordprocessingDocument.Open(patternPath, false);
@@ -44,6 +52,11 @@ namespace QCReportGenerator
             }
         }
 
+        /// <summary>
+        /// Вставляет в документ строку с наименованием дисциплины и ячейками для вписания результатов 
+        /// проверки рабочей программы данной дисциплины
+        /// </summary>
+        /// <param name="result">Результат проверки рабочих программ конкретного направления обучения курса бакалавриата будущего года</param>
         private void InsertRpdInfo(ProgramRpdsAnalyzer result)
         {
             var table = body.Descendants<Table>().First();
@@ -65,6 +78,9 @@ namespace QCReportGenerator
             }
         }
 
+        /// <summary>
+        /// Вставляет в документ информацию для '2. Аналитические выводы'
+        /// </summary>
         private void InsertAnalytics()
         {
             var table = body.Descendants<Table>().First();
@@ -87,12 +103,16 @@ namespace QCReportGenerator
             InsertProblemsFrequency(paragraphs[3]);
         }
 
+        /// <summary>
+        /// Вставляет в документ информацию о количестве ошибок для каждой секции РПД
+        /// </summary>
+        /// <param name="paragraph">Параграф, в конец которого добавляется информация</param>
         private void InsertProblemsFrequency(Paragraph paragraph)
         {
             var problemsFrequency = new Dictionary<string, int>();
             foreach (var result in analysisResults)
             {
-                foreach (var problem in result.RpdProblemsFrequency)
+                foreach (var problem in result.RpdSectionProblemsFrequency)
                 {
                     if (!problemsFrequency.ContainsKey(problem.Key))
                     {
@@ -110,6 +130,10 @@ namespace QCReportGenerator
             }
         }
 
+        /// <summary>
+        /// Вставляет в документ информацию о РПД, которые не были проанализированны => не включены в таблицу
+        /// </summary>
+        /// <param name="paragraph">Параграф, в конец которого добавляется информация</param>
         private void InsertNotAnalyzedRpdInfo(Paragraph paragraph)
         {
             foreach (var result in analysisResults)
@@ -150,15 +174,26 @@ namespace QCReportGenerator
             }
         }
 
+        /// <summary>
+        /// Создает ячейку таблицы, заданной в шаблоне
+        /// </summary>
+        /// <param name="text"></param>
+        /// <returns></returns>
         private static TableCell CreateTableCell(string text)
             => new(new Paragraph(new Run(new Text(text))));
 
+        /// <summary>
+        /// Создает пробег с текстом красного цвета для вставки информации о необработанных РПД
+        /// </summary>
         private static Run CreateRedRun(string text) 
             => new(new Text(text), new Break(), new Break())
             {
                 RunProperties = new RunProperties { Color = new Color() { Val = "FF0000" } }
             };
 
+        /// <summary>
+        /// Создает строку в таблице с одной ячейкой, которая описывает, РПД какого курса бакалавриата анализируются
+        /// </summary>
         private static TableCell CreateTableCellCourseHeader(string text)
         {
             var js = new Justification { Val = JustificationValues.Center };
