@@ -11,7 +11,7 @@ namespace QCReportGenerator
             {
                 Console.WriteLine("Добро пожаловать в QC Report Generator, утилиту для генерации отчета комиссии контроля качества");
                 Console.WriteLine("Использование:");
-                Console.WriteLine("dotnet run <номер рабочего плана и год> <папка с РПД>");
+                Console.WriteLine("dotnet run <учебный план 1> <папка с РПД учебного плана 1> <учебный план 2> <папка с РПД учебного плана 2> ... <учебный план N> <папка с РПД учебного плана N>");
                 return;
             }
 
