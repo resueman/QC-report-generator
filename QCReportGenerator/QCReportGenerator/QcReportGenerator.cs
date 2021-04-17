@@ -157,10 +157,10 @@ namespace QCReportGenerator
                             paragraph.AppendChild(CreateRedRun($"РПД, которых не было в {result.RpdFolderPath}:"));
                             break;
                         case IgnoreReasonType.ParsingProblems:
-                            paragraph.AppendChild(CreateRedRun("РПД, при парсинге которых возникло исключение:"));
+                            paragraph.AppendChild(CreateRedRun($"РПД, при разборе которых возникло исключение (план {result.CurriculumPath}):"));;
                             break;
                         case IgnoreReasonType.TwoRpdsInFolder:
-                            paragraph.AppendChild(CreateRedRun("Несколько РПД для одной дисциплины в папке:"));
+                            paragraph.AppendChild(CreateRedRun($"Несколько РПД для одной дисциплины в папке (план {result.CurriculumPath}):"));
                             break;
                     }
 
