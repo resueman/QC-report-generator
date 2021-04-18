@@ -59,24 +59,6 @@ namespace QCReportGenerator
         /// </summary>
         public List<(Discipline Discipline, string FormMismatchSections, string ValueFundCheckResult)> Results { get; private set; }
 
-        /// <summary>
-        /// Фонд оценочных средств. Ключ -- секция РПД, описывающая ФОС, значение -- пункт Положения, выполнимость 
-        /// которого определяется содержанием секции РПД 
-        /// </summary>
-        private static readonly Dictionary<string, string> valuationFund = new()
-        {
-            {
-                "3.1.4. Методические материалы для проведения текущего контроля успеваемости и промежуточной" +
-                    " аттестации (контрольно-измерительные материалы, оценочные средства)",
-                "3.2.3, "
-            },
-            {
-                "3.1.3. Методика проведения текущего контроля " +
-                    "успеваемости и промежуточной аттестации и критерии оценивания",
-                "3.2.4, "
-            }
-        };
-
         public ProgramRpdsAnalyzer(string curriculumPath, string rpdFolderPath)
         {
             if (!Directory.Exists(rpdFolderPath))
@@ -234,17 +216,20 @@ namespace QCReportGenerator
         private string GetValueFundCheckErrors(Microsoft.FSharp.Collections.FSharpMap<string, string> c)
         {
             var valueFundCheckResult = new StringBuilder();
-            var competencesError = ProgramContentChecker.shallContainCompetences(c).ToList();
-            if (competencesError.Count != 0)
+            if (ProgramContentChecker.controlMaterialsShallReferenceCompetences(c).Length != 0)
             {
                 valueFundCheckResult.Append("3.2.1, 3.2.2, ");
             }
 
-            var content = c.ToDictionary(c => c.Key, c => c.Value);
-            valuationFund
-                .Where(s => !content.TryGetValue(s.Key, out var text) || text.Trim() == "")
-                .ToList()
-                .ForEach(s => valueFundCheckResult.Append(s.Value));
+            if (ProgramContentChecker.controlMaterialsShallBeBigEnough(c).Length != 0)
+            {
+                valueFundCheckResult.Append("3.2.3, ");
+            }
+
+            if (ProgramContentChecker.attestationMethodologyShallBeBigEnough(c).Length != 0)
+            {
+                valueFundCheckResult.Append("3.2.4, ");
+            }
 
             if (!string.IsNullOrEmpty(valueFundCheckResult.ToString()))
             {
