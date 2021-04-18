@@ -21,7 +21,7 @@ namespace QCReportGenerator
         {
             analysisResults = results;
             patternPath = "./pattern.docx";
-            QCReportPath = $"./Отчет РПД {results.First().Curriculum.Programme.Code}.docx";
+            QCReportPath = $"./Отчет РПД {results.First().Curriculum.CurriculumCode.Substring(3, 4)}.docx";
             CreateQCReportDocument();
         }
 
@@ -140,7 +140,7 @@ namespace QCReportGenerator
             {
                 if (result.IgnoredRpd.Values.All(l => l.Count == 0))
                 {
-                    return;
+                    continue;
                 }
 
                 paragraph.AppendChild(CreateRedRun($"Непроанализированные РПД плана {result.CurriculumPath}"));
@@ -154,13 +154,13 @@ namespace QCReportGenerator
                     switch (reason)
                     {
                         case IgnoreReasonType.NotFound:
-                            paragraph.AppendChild(CreateRedRun($"РПД, которых не было в {result.RpdFolderPath}:"));
+                            paragraph.AppendChild(CreateRedRun($"РПД, которых не было в папке '{result.RpdFolderPath}':"));
                             break;
                         case IgnoreReasonType.ParsingProblems:
-                            paragraph.AppendChild(CreateRedRun($"РПД, при разборе которых возникло исключение (план {result.CurriculumPath}):"));;
+                            paragraph.AppendChild(CreateRedRun($"РПД, при разборе которых возникло исключение:"));;
                             break;
                         case IgnoreReasonType.TwoRpdsInFolder:
-                            paragraph.AppendChild(CreateRedRun($"Несколько РПД для одной дисциплины в папке (план {result.CurriculumPath}):"));
+                            paragraph.AppendChild(CreateRedRun($"Несколько РПД для одной дисциплины в папке:"));
                             break;
                     }
 
